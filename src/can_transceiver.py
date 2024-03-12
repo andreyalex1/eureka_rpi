@@ -23,7 +23,7 @@ class can_transceiver:
         return can.recv(timeout)
     def callback(self, msg):
         send = self.can.Message(msg.data[0],data = msg.data[1:9] , extended_id=False)
-        self.can.semd(send)
+        self.can.send(send)
     def spin(self):
         rate = rospy.Rate(500) # 10hz
         while not rospy.is_shutdown():
