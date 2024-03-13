@@ -6,7 +6,7 @@
 from geometry_msgs.msg import Twist
 from std_msgs.msg import UInt8MultiArray
 import numpy as np
-from math import atan, sqrt
+from math import atan, sqrt, pi
 import rospy
 
 class ackermann:
@@ -22,12 +22,19 @@ class ackermann:
         rospy.loginfo("Ackermann Killed!")
 
     def send(self):
-        
+        for c in range(6):
+            msg = UInt8MultiArray()
+            arr = np.array([self.vel_wheel[c], self.ang_wheel[c]], dtype = np.float16)
+       #     print(arr)
+            data = bytes([c + 11]) + arr.tobytes()
+            msg.data = data
+      #      print(msg)
+            self.pub.publish(msg)
     def callback(self,data):
-        print(data)
+    #    print(data)
         vel_lin = data.linear.x
         vel_ang = data.angular.z
-        print(vel_lin, vel_ang)
+  #      print(vel_lin, vel_ang)
         # go straingt
         
         if(vel_ang == 0):
@@ -40,11 +47,12 @@ class ackermann:
             if(abs(rad) > .58):
                 for c in range(6):
                     self.vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
-                    self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2))
+                    self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2)) * 180 / pi
             else:
                 for c in range(6):
                     self.vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
-                    self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2))
+                    self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2)) * 180 / pi
+        self.send()
         print(self.vel_wheel)
         print(self.ang_wheel)
         print("-------------------------")

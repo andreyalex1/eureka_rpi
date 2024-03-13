@@ -14,21 +14,23 @@ class can_transceiver:
         self.pub = rospy.Publisher('can_rx', UInt8MultiArray, queue_size=10)
         self.sub = rospy.Subscriber("can_tx", UInt8MultiArray, self.callback)
         os.system('sudo ip link set can0 up type can bitrate 1000000 restart-ms 1000')
-        self.can = can.interface.Bus(channel = 'can0', bustype = 'socketcan')  # socketcan_native
+        os.system('sudo ifconfig can0 up')
+        self.can0 = can.interface.Bus(channel = 'can0', bustype = 'socketcan')  # socketcan_native
         rospy.loginfo("CAN Started!")
     def __del__(self):
         os.system('sudo ifconfig can0 down')
         rospy.loginfo("CAN Killed!")
     def recv(self, timeout):
-        return can.recv(timeout)
+        return can0.recv(timeout)
     def callback(self, msg):
-        send = self.can.Message(msg.data[0],data = msg.data[1:9] , extended_id=False)
-        self.can.send(send)
+        send = can.Message(arbitration_id = msg.data[0],data = msg.data[1:9] , extended_id=False)
+        print(send)
+        self.can0.send(send)
     def spin(self):
         rate = rospy.Rate(500) # 10hz
         while not rospy.is_shutdown():
             arr = UInt8MultiArray()
-            msg = self.can.recv(10.0)
+            msg = self.can0.recv(10.0)
             if(msg is  None):
                 rate.sleep()
             else:
