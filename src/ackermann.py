@@ -4,8 +4,10 @@
 #MSU Rover Team. Voltbro. NIIMech 
 
 from geometry_msgs.msg import Twist
+from std_msgs.msg import UInt8MultiArray
 import numpy as np
-from math import atan
+from math import atan, sqrt
+import rospy
 
 class ackermann:
     def __init__(self):
@@ -18,10 +20,16 @@ class ackermann:
         rospy.loginfo("Ackermann Started!")
     def __del__(self):
         rospy.loginfo("Ackermann Killed!")
+
+    def send(self):
+        
     def callback(self,data):
-        vel_lin = data.linear[0]
-        vel_ang = data.angular[0]
+        print(data)
+        vel_lin = data.linear.x
+        vel_ang = data.angular.z
+        print(vel_lin, vel_ang)
         # go straingt
+        
         if(vel_ang == 0):
             self.vel_wheel = [vel_lin] * 6
             self.ang_wheel = [0] * 6
@@ -31,9 +39,18 @@ class ackermann:
             #turn center outside
             if(abs(rad) > .58):
                 for c in range(6):
-                    vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
-                    ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2))
+                    self.vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
+                    self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2))
             else:
                 for c in range(6):
-                    vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
-                    ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2))
+                    self.vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
+                    self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2))
+        print(self.vel_wheel)
+        print(self.ang_wheel)
+        print("-------------------------")
+
+if __name__ == "__main__":
+    rospy.init_node('ackermann')
+    obj = ackermann()
+    rate = rospy.Rate(500) # 10hz
+    rospy.spin()
