@@ -8,15 +8,20 @@ from std_msgs.msg import UInt8MultiArray
 import numpy as np
 from math import atan, sqrt, pi
 import rospy
+import threading
 
 class ackermann:
     def __init__(self):
         self.pub = rospy.Publisher('can_tx', UInt8MultiArray, queue_size=10)
         self.sub = rospy.Subscriber("cmd_vel", Twist, self.callback)
         self.vel_wheel = [0] * 6
+        self.vel_wheel_filt = [0] * 6
         self.ang_wheel = [0] * 6
+        self.ang_wheel_filt = [0] * 6
         self.l = [.41, 0, .385, .41, 0, .385]
         self.d = [.728, .780, .728, -.728, -.780, -.728]
+        self.filt_thread = threading.Thread(target = self.filter, args = (), daemon=True)
+        self.filt_thread.start()
         rospy.loginfo("Ackermann Started!")
     def __del__(self):
         rospy.loginfo("Ackermann Killed!")
@@ -24,38 +29,65 @@ class ackermann:
     def send(self):
         for c in range(6):
             msg = UInt8MultiArray()
-            arr = np.array([self.vel_wheel[c], self.ang_wheel[c]], dtype = np.float16)
-       #     print(arr)
+            arr = np.array([self.vel_wheel_filt[c], self.ang_wheel[c]], dtype = np.float16)
             data = bytes([c + 11]) + arr.tobytes()
             msg.data = data
-      #      print(msg)
             self.pub.publish(msg)
     def callback(self,data):
-    #    print(data)
         vel_lin = data.linear.x
         vel_ang = data.angular.z
-  #      print(vel_lin, vel_ang)
         # go straingt
         
         if(vel_ang == 0):
             self.vel_wheel = [vel_lin] * 6
             self.ang_wheel = [0] * 6
+            self.vel_wheel[3] *= -1
+            self.vel_wheel[4] *= -1
+            self.vel_wheel[5] *= -1
         #turn
         else:
             rad = .6/vel_ang
             #turn center outside
             if(abs(rad) > .58):
                 for c in range(6):
-                    self.vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
+                    self.vel_wheel[c] = vel_lin / abs(rad) * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
                     self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2)) * 180 / pi
+                    if(c > 2):
+                        self.vel_wheel[c] *= -1
+            #turn center inside
             else:
                 for c in range(6):
-                    self.vel_wheel[c] = vel_lin / rad * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
+                    self.vel_wheel[c] = vel_lin * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
                     self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2)) * 180 / pi
+        self.ang_wheel[2] *= -1
+        self.ang_wheel[5] *= -1
+        self.ang_wheel[0] -= 2
+        self.ang_wheel[2] -= 7
+        self.ang_wheel[3] -= 5
+        self.ang_wheel[5] -= 8
         self.send()
-        print(self.vel_wheel)
-        print(self.ang_wheel)
-        print("-------------------------")
+
+    def filter(self):
+        step = 0.05
+        rate = rospy.Rate(20) # 10hz
+        while not rospy.is_shutdown():
+            for c in range (6):
+                if(abs(self.vel_wheel[c] - self.vel_wheel_filt[c]) > step):
+                    if(self.vel_wheel[c] > self.vel_wheel_filt[c]):
+                        self.vel_wheel_filt[c] += step
+                    else:
+                        self.vel_wheel_filt[c] -= step
+ #          calibration
+            
+
+            self.send()
+            rate.sleep()
+         #       if(abs(ang_wheel[c] - ang_wheel_filt[c]) > step):
+         #           if(ang_wheel[c] > ang_wheel_filt[c]):
+         #               ang_wheel_filt[c] -= step
+         #           else:
+         #               ang_wheel_filt[c] += step
+
 
 if __name__ == "__main__":
     rospy.init_node('ackermann')
