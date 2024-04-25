@@ -1,0 +1,11 @@
+<launch>
+    <node pkg="eureka_rpi" type="can_transceiver.py" name="can_transceiver" output="log" respawn="true"/>
+    <node pkg="eureka_rpi" type="ackermann.py" name="ackermann" output="log" respawn="true"/>
+    <node pkg="eureka_rpi" type="arm_decoder.py" name="arm_decoder" output="log" respawn="true"/>
+    <node pkg="eureka_rpi" type="arm_encoder.py" name="arm_encoder" output="log" respawn="true"/>
+    <node pkg="eureka_rpi" type="dc_decoder.py" name="dc_decoder" output="log" respawn="true"/>
+
+
+    <include file="$(find turtlebro)/launch/camera_ros.launch"/>
+    <include file="$(find turtlebro_web)/launch/turtlebro_web.launch"/>
+</launch>

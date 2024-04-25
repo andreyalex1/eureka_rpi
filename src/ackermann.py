@@ -9,6 +9,7 @@ import numpy as np
 from math import atan, sqrt, pi
 import rospy
 import threading
+import time
 
 class ackermann:
     def __init__(self):
@@ -29,7 +30,7 @@ class ackermann:
     def send(self):
         for c in range(6):
             msg = UInt8MultiArray()
-            arr = np.array([self.vel_wheel_filt[c], self.ang_wheel[c]], dtype = np.float16)
+            arr = np.array([self.vel_wheel_filt[c], self.ang_wheel[c], 0.25], dtype = np.float16)
             data = bytes([c + 11]) + arr.tobytes()
             msg.data = data
             self.pub.publish(msg)
@@ -59,12 +60,12 @@ class ackermann:
                 for c in range(6):
                     self.vel_wheel[c] = vel_lin * sqrt(self.l[c]**2 + (rad + self.d[c]/2)**2)
                     self.ang_wheel[c] = atan(self.l[c]/ (rad + self.d[c] / 2)) * 180 / pi
-        self.ang_wheel[2] *= -1
-        self.ang_wheel[5] *= -1
+        self.ang_wheel[0] *= -1
+        self.ang_wheel[3] *= -1
         self.ang_wheel[0] -= 2
-        self.ang_wheel[2] -= 7
-        self.ang_wheel[3] -= 5
-        self.ang_wheel[5] -= 8
+        self.ang_wheel[2] -= 0
+        self.ang_wheel[3] += 2
+        self.ang_wheel[5] -= 0
         self.send()
 
     def filter(self):
@@ -72,21 +73,9 @@ class ackermann:
         rate = rospy.Rate(20) # 10hz
         while not rospy.is_shutdown():
             for c in range (6):
-                if(abs(self.vel_wheel[c] - self.vel_wheel_filt[c]) > step):
-                    if(self.vel_wheel[c] > self.vel_wheel_filt[c]):
-                        self.vel_wheel_filt[c] += step
-                    else:
-                        self.vel_wheel_filt[c] -= step
- #          calibration
-            
-
+                self.vel_wheel_filt[c] += step * (self.vel_wheel[c] - self.vel_wheel_filt[c])
             self.send()
             rate.sleep()
-         #       if(abs(ang_wheel[c] - ang_wheel_filt[c]) > step):
-         #           if(ang_wheel[c] > ang_wheel_filt[c]):
-         #               ang_wheel_filt[c] -= step
-         #           else:
-         #               ang_wheel_filt[c] += step
 
 
 if __name__ == "__main__":
